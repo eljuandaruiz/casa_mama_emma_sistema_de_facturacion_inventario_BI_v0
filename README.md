@@ -1,0 +1,2 @@
+# casa_mama_emma_sistema_de_facturacion_inventario_BI_v0
+priver buen proyecto
