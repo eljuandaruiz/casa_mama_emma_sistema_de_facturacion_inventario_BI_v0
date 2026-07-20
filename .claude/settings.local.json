@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"login: %{http_code}\\\\n\" http://localhost:3000/login)",
+      "Bash(curl -s -o /dev/null -w \"home: %{http_code}\\\\n\" http://localhost:3000/)",
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:3000/\" -UseBasicParsing -MaximumRedirection 0 -ErrorAction SilentlyContinue\\).StatusCode)"
+    ]
+  }
+}

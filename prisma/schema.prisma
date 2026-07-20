@@ -1,0 +1,634 @@
+// ============================================================
+// Esquema de datos - Casa Mamá Emma
+// SQLite (migrable a PostgreSQL cambiando el provider + url)
+// Montos monetarios: Float redondeado SIEMPRE a 2 decimales por
+// los helpers de src/lib/money.ts (cálculo interno en centavos).
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Habitaciones ----------
+model Habitacion {
+  id               Int              @id @default(autoincrement())
+  numero           Int              @unique // 2..7
+  nombre           String // "Habitación 2"
+  descripcionCamas String // "1 matrimonial, 1 simple, 2 literas"
+  camasMatrimonial Int              @default(0)
+  camasSimple      Int              @default(0)
+  camasLitera      Int              @default(0) // cada litera duerme 2
+  capacidad        Int // calculada al sembrar: 2*matr + 1*simple + 2*litera
+  precioHabitacion Float // tarifa plana por noche (modo A)
+  precioPersona    Float // tarifa por persona por noche (modo B)
+  grupoCompartido  String? // "3-4" => espacio compartido entre hab. 3 y 4
+  activa           Boolean          @default(true)
+  detalles         DetalleFactura[]
+}
+
+// ---------- Clientes ----------
+model Cliente {
+  id                 Int       @id @default(autoincrement())
+  // Códigos SRI tabla 6: 04=RUC, 05=Cédula, 06=Pasaporte, 07=Consumidor Final
+  tipoIdentificacion String
+  identificacion     String    @unique
+  razonSocial        String
+  direccion          String?
+  email              String?
+  telefono           String?
+  nacionalidad       String?   // país del huésped (CRM); autocompletable en el form
+  creadoEn           DateTime  @default(now())
+  facturas           Factura[]
+}
+
+// ---------- Facturas (comprobantes de venta) ----------
+model Factura {
+  id                 String           @id @default(cuid())
+  // Numeración legal: estab-ptoEmi-secuencial => "001-001-000000001"
+  establecimiento    String
+  puntoEmision       String
+  secuencial         Int
+  numeroCompleto     String           @unique
+  fechaEmision       DateTime         @default(now())
+  ambiente           String // "1" pruebas | "2" producción
+  claveAcceso        String           @unique // 49 dígitos, módulo 11
+  // Flujo SRI: GENERADA -> FIRMADA -> RECIBIDA -> AUTORIZADA
+  //            | DEVUELTA | NO_AUTORIZADA | EN_PROCESO | ERROR_ENVIO
+  estadoSri          String           @default("GENERADA")
+  numeroAutorizacion String?
+  fechaAutorizacion  DateTime?
+  mensajesSri        String? // JSON con mensajes/errores devueltos por el SRI
+  xmlFirmado         String? // XML firmado XAdES-BES (se conserva 7 años)
+
+  clienteId Int
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
+
+  // Datos de la estadía
+  modoPrecio String // "HABITACION" (tarifa plana) | "PERSONA"
+  huespedes  Int    @default(1)
+  noches     Int    @default(1)
+  checkIn    DateTime?
+  checkOut   DateTime?
+
+  // Totales (2 decimales)
+  subtotalSinImpuestos Float
+  totalDescuento       Float  @default(0)
+  base15               Float  @default(0) // base imponible IVA 15% (cód. 4)
+  base8                Float  @default(0) // base imponible IVA 8%  (cód. 8)
+  base0                Float  @default(0) // base imponible IVA 0%  (cód. 0)
+  valorIva             Float  @default(0)
+  propina              Float  @default(0)
+  importeTotal         Float
+  // Tabla 24 SRI: 01=sin sistema financiero (efectivo), 20=transferencia
+  formaPago            String
+
+  // Nota informativa impresa en el RIDE (p. ej. desglose de comisión Airbnb).
+  notaAdicional   String?
+  // Versión en INGLÉS de la nota (con los mismos valores), para el turista.
+  notaAdicionalEn String?
+  // Foto del comprobante cuando el pago es por transferencia (ruta del archivo).
+  pagoComprobante String?
+  // --- Unit economics (rentabilidad por estadía) ---
+  // Costo monetario de los consumibles descontados del inventario al emitir.
+  costoConsumibles Float @default(0)
+  anulada         Boolean   @default(false)
+  motivoAnulacion String?
+  fechaAnulacion  DateTime?
+  creadaEn DateTime         @default(now())
+  detalles DetalleFactura[]
+  perfil   PerfilHuesped?
+
+  @@index([fechaEmision])
+  @@index([estadoSri])
+}
+
+// ---------- Perfil demográfico del huésped (BI/CRM oculto) ----------
+// Datos SOLO para análisis interno, invisibles al huésped. Se ligan a una
+// factura (1:1) para poder cruzar demografía contra ingresos, habitación y
+// temporada. Todos los campos son opcionales: se llenan cuando se conocen.
+model PerfilHuesped {
+  id        Int     @id @default(autoincrement())
+  facturaId String  @unique
+  factura   Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+
+  genero            String? // MASCULINO | FEMENINO | OTRO | PREFIERE_NO_DECIR
+  edad              Int?
+  nacionalidad      String? // texto libre / país
+  paisResidencia    String?
+  profesion         String?
+  estadoRelacion    String? // SOLTERO | PAREJA | FAMILIA | GRUPO_AMIGOS
+  // Segmento de viajero (tabla flexible, texto):
+  //   NOMADA_DIGITAL | TELETRABAJO_CORPORATIVO | OCIO | JUBILADO |
+  //   ADULTO_MAYOR | VIAJERO_ECUATORIANO | OCASIONAL
+  segmentoViajero   String?
+  notas             String?
+
+  creadoEn  DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@index([genero])
+  @@index([segmentoViajero])
+  @@index([nacionalidad])
+}
+
+// ---------- Detalle de factura ----------
+model DetalleFactura {
+  id                    Int     @id @default(autoincrement())
+  facturaId             String
+  factura               Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  habitacionId          Int?
+  habitacion            Habitacion? @relation(fields: [habitacionId], references: [id])
+  codigoPrincipal       String // ej. "HAB-002" o "SERV-EXTRA"
+  descripcion           String
+  cantidad              Float
+  precioUnitario        Float
+  descuento             Float   @default(0)
+  precioTotalSinImpuesto Float
+  codigoPorcentajeIva   String // "4"=15%, "8"=8%, "0"=0%
+  tarifaIva             Float // 15 | 8 | 0
+  valorIva              Float
+}
+
+// ---------- Gastos ----------
+model Gasto {
+  id                Int      @id @default(autoincrement())
+  fecha             DateTime @default(now())
+  categoria         String // SERVICIOS_BASICOS | INSUMOS | MANTENIMIENTO | SUELDOS | IMPUESTOS | OTROS
+  descripcion       String
+  proveedor         String?
+  rucProveedor      String?
+  numeroComprobante String? // nro. de factura del proveedor (sustento tributario)
+  subtotal          Float
+  iva               Float    @default(0)
+  total             Float
+  formaPago         String   @default("EFECTIVO")
+  deducible         Boolean  @default(true)
+  creadoEn          DateTime @default(now())
+
+  @@index([fecha])
+}
+
+// ---------- Categorías de gasto dinámicas (estilo app Wallet) ----------
+// El usuario puede crear las suyas; todas son sujetas de deducción de IVA.
+model CategoriaGasto {
+  id       Int     @id @default(autoincrement())
+  valor    String  @unique // slug estable, ej. "MUEBLES_ELECTRO"
+  etiqueta String // texto visible, ej. "Muebles y electrodomésticos"
+  icono    String? // emoji opcional para la UI
+  activa   Boolean @default(true)
+}
+
+// ---------- Presets de tarifa (ganancia NETA por persona/noche) ----------
+// "Quiero ganar $11 por persona (normal), $15 en feriados…": el preset guarda
+// la GANANCIA NETA deseada; el formulario calcula el precio a cobrar según el
+// canal (directo suma IVA encima; Airbnb además revierte la comisión).
+model TarifaPreset {
+  id                  Int     @id @default(autoincrement())
+  nombre              String // "Normal", "Feriado", "Hab. grande"…
+  gananciaPorPersona  Float // USD netos por persona por noche
+  orden               Int     @default(0)
+  activa              Boolean @default(true)
+}
+
+// ---------- RIMPE: control simple sin facturación ----------
+// Mientras el negocio esté en régimen RIMPE (hasta $20,000/año) se registran
+// ingresos SIN factura SRI para conocer costo/ganancia por habitación.
+model IngresoSimple {
+  id               Int      @id @default(autoincrement())
+  fecha            DateTime @default(now())
+  numeroHabitacion Int? // null = casa completa u otro
+  huespedes        Int      @default(1)
+  noches           Int      @default(1)
+  monto            Float // lo que ENTRÓ (neto recibido)
+  canal            String   @default("DIRECTO") // DIRECTO | AIRBNB | BOOKING | OTRO
+  notas            String?
+  creadoEn         DateTime @default(now())
+
+  @@index([fecha])
+  @@index([numeroHabitacion])
+}
+
+// Histórico mensual de servicios básicos (agua, luz, internet, teléfono…)
+// para ver la evolución en el tiempo y compararla contra los ingresos.
+model ServicioBasicoMes {
+  id    Int    @id @default(autoincrement())
+  mes   String // "YYYY-MM"
+  tipo  String // AGUA | LUZ | INTERNET | TELEFONO | GAS | OTRO
+  valor Float
+
+  @@unique([mes, tipo])
+  @@index([mes])
+}
+
+// ---------- Tareas / agenda (interconectado con Google Calendar) ----------
+// Módulo transversal: tareas del negocio (mantenimiento programado, pagos de
+// impuestos, recordatorios de reservas) que se sincronizan best-effort al
+// Google Calendar conectado en /integraciones (misma cuenta que las reservas).
+model Tarea {
+  id             Int       @id @default(autoincrement())
+  titulo         String
+  descripcion    String?
+  fecha          DateTime // fecha/hora de inicio
+  duracionMin    Int       @default(60)
+  completada     Boolean   @default(false)
+  // Interconexión: de qué módulo nació la tarea (para enlazarla en la UI).
+  origen         String    @default("MANUAL") // MANUAL | MANTENIMIENTO | RESERVA | IMPUESTOS
+  referenciaId   String? // id del registro origen (texto por flexibilidad)
+  eventoGoogleId String? // id del evento en Google Calendar (si se sincronizó)
+  creadoEn       DateTime  @default(now())
+
+  @@index([fecha])
+  @@index([completada])
+}
+
+// ---------- Catálogo de productos/servicios (facturable, escalable) ----------
+// Servicios extra del hospedaje HOY (lavandería, tour, desayuno…) y la base
+// para escalar el sistema a otros negocios (DTF/imprenta, zapatos, etc.):
+// cualquier producto con código, precio y tarifa de IVA se puede añadir como
+// línea de la factura SRI.
+model Producto {
+  id             Int      @id @default(autoincrement())
+  codigo         String   @unique // codigoPrincipal SRI, ej. "SERV-LAVAND" o "PROD-0001"
+  descripcion    String
+  precioUnitario Float
+  codigoIva      String   @default("4") // "4"=15% | "8"=8% | "0"=0%
+  activo         Boolean  @default(true)
+  creadoEn       DateTime @default(now())
+}
+
+// ---------- Caja diaria / cierre de turno ----------
+// Reconciliación del efectivo físico contra lo que el sistema espera
+// (facturas en efectivo − gastos pagados en efectivo) desde el cierre
+// anterior. `saldoInicial` es lo contado en el cierre previo (el cambio
+// que queda en la caja), así el efectivo esperado no arranca en cero.
+model CierreCaja {
+  id               Int      @id @default(autoincrement())
+  fecha            DateTime @default(now()) // momento del cierre
+  desde            DateTime // inicio del turno cubierto (= cierre anterior, o inicio si es el primero)
+  hasta            DateTime // fin del turno cubierto (= `fecha`)
+  usuario          String // nombre de quien cierra (de la sesión)
+  saldoInicial     Float    @default(0) // contado en el cierre anterior
+  ingresosEfectivo Float    @default(0) // facturas formaPago=01 en el período
+  egresosEfectivo  Float    @default(0) // gastos formaPago=EFECTIVO en el período
+  efectivoEsperado Float    @default(0) // saldoInicial + ingresosEfectivo − egresosEfectivo
+  efectivoContado  Float // conteo físico ingresado por el usuario
+  diferencia       Float    @default(0) // contado − esperado (+ sobra, − falta)
+  nFacturas        Int      @default(0)
+  notas            String?
+  creadoEn         DateTime @default(now())
+
+  @@index([fecha])
+}
+
+// ---------- Control de secuenciales por punto de emisión ----------
+model Secuencial {
+  id              Int    @id @default(autoincrement())
+  establecimiento String
+  puntoEmision    String
+  tipoComprobante String @default("01") // 01 = factura
+  ultimo          Int    @default(0)
+
+  @@unique([establecimiento, puntoEmision, tipoComprobante])
+}
+
+// ---------- Lavandería (lencería, ciclos de lavado y costos) ----------
+model CicloLavado {
+  id            Int      @id @default(autoincrement())
+  fecha         DateTime @default(now())
+  tipoLencerria String   @default("MIXTO") // SABANAS | TOALLAS | COBIJAS | MIXTO
+  cantidad      Int      @default(0) // nº de piezas lavadas en el ciclo
+  costoJabon    Float    @default(0)
+  costoAguaLuz  Float    @default(0) // aproximación de agua + electricidad por ciclo
+  costoTotal    Float    @default(0) // costoJabon + costoAguaLuz (+ extras)
+  notas         String?
+  creadoEn      DateTime @default(now())
+
+  @@index([fecha])
+}
+
+// ---------- Mejoras / upgrades (adiciones de valor al activo) ----------
+// ESTRICTAMENTE separado de Mantenimiento: aquí se registran adiciones de
+// capital (muebles nuevos, interruptores inteligentes, remodelaciones) por
+// habitación, para ver la línea de tiempo y el capital invertido por espacio.
+model Mejora {
+  id             Int      @id @default(autoincrement())
+  area           String   // área física (src/lib/areas.ts): HAB_2..HAB_7, SALA…
+  descripcion    String   // ítem / acción (ej. "Interruptores inteligentes")
+  costo          Float    @default(0)
+  numeroFactura  String?  // factura de referencia (opcional)
+  imagen         String?  // data URI de la foto (opcional)
+  fecha          DateTime @default(now()) // cuándo se hizo la mejora
+  creadoEn       DateTime @default(now())
+
+  @@index([area])
+  @@index([fecha])
+}
+
+// ---------- Proveedores (directorio de a quién compramos) ----------
+model Proveedor {
+  id         Int      @id @default(autoincrement())
+  nombre     String
+  ruc        String?
+  categoria  String?  // FERRETERIA | MUEBLES | INSUMOS | SERVICIOS | OTROS
+  telefono   String?
+  email      String?
+  direccion  String?
+  notas      String?
+  creadoEn   DateTime @default(now())
+  compras    Compra[]
+  articulos  ProveedorArticulo[] // relación N:N con artículos de inventario
+
+  @@index([nombre])
+}
+
+// ---------- Compras y activos (con depreciación) ----------
+// Registra compras de muebles, herramientas, insumos, etc. Para los activos
+// (no consumibles) la depreciación se calcula al vuelo (ver lib/depreciacion.ts).
+model Compra {
+  id             Int      @id @default(autoincrement())
+  descripcion    String
+  categoria      String   @default("OTROS") // ver CATEGORIAS_COMPRA en lib/depreciacion.ts
+  area           String?  // área física a la que pertenece (lib/areas.ts)
+  costo          Float
+  cantidad       Float    @default(1)
+  numeroFactura  String?  // nº de factura del proveedor (sustento tributario)
+  fechaCompra    DateTime @default(now())
+  proveedorId    Int?
+  proveedor      Proveedor? @relation(fields: [proveedorId], references: [id])
+  notas          String?
+  creadoEn       DateTime @default(now())
+
+  @@index([fechaCompra])
+  @@index([categoria])
+}
+
+// ---------- Obligaciones tributarias / recordatorios ----------
+// Impuestos y trámites con vencimiento (IVA mensual, patente municipal de
+// Baños, RISE, bomberos, etc.). El dashboard avisa desde 1 mes antes.
+model Obligacion {
+  id            Int      @id @default(autoincrement())
+  nombre        String // "Declaración IVA", "Patente municipal Baños"
+  tipo          String   @default("IMPUESTO") // IMPUESTO | MUNICIPAL | PERMISO | OTRO
+  proximoVencimiento DateTime
+  // MENSUAL | ANUAL | SEMESTRAL | UNICA (para recalcular al marcar cumplida)
+  recurrencia   String   @default("ANUAL")
+  entidad       String? // "SRI", "GAD Baños de Agua Santa", "Cuerpo de Bomberos"
+  notas         String?
+  activa        Boolean  @default(true)
+  ultimoPago    DateTime?
+  creadoEn      DateTime @default(now())
+
+  @@index([proximoVencimiento])
+}
+
+// ---------- Inventario (amenidades y consumibles del hospedaje) ----------
+model ArticuloInventario {
+  id           Int      @id @default(autoincrement())
+  nombre       String
+  categoria    String   @default("OTROS") // ver CATEGORIAS_OPERATIVAS en lib/categorias.ts
+  unidad       String   @default("unidad") // unidad | par | juego | litro | rollo…
+  stock        Float    @default(0)
+  stockMinimo  Float    @default(0) // umbral para alerta de reposición
+  valorUnitario Float   @default(0) // costo monetario por unidad (para unit economics)
+  icono        String?  // nombre de icono (lucide) para la UI visual
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+  movimientos  MovimientoInventario[]
+  consumosPorHabitacion ConsumibleHabitacion[]
+  proveedores  ProveedorArticulo[] // relación N:N con proveedores
+
+  @@index([categoria])
+}
+
+// Consumibles estándar que se gastan por estadía en CADA habitación.
+// Al emitir una factura de una habitación, estos ítems se descuentan del
+// inventario y su costo se resta de los ingresos de esa estadía.
+model ConsumibleHabitacion {
+  id           Int      @id @default(autoincrement())
+  numeroHabitacion Int  // 2..7 (o 0 = aplica a cualquier habitación)
+  articuloId   Int
+  articulo     ArticuloInventario @relation(fields: [articuloId], references: [id], onDelete: Cascade)
+  cantidad     Float    @default(1) // unidades base
+  // Cómo escala el consumo con los huéspedes de la factura:
+  //   FIJO        -> cantidad fija por estadía (comportamiento clásico)
+  //   POR_PERSONA -> cantidad × nº de huéspedes (agua, jabón, champú…)
+  //   CADA_DOS    -> cantidad × ⌈huéspedes/2⌉ (papel higiénico: 1 hasta 2 personas, 2 con 3-4…)
+  regla        String   @default("FIJO")
+
+  @@unique([numeroHabitacion, articuloId])
+}
+
+// Tabla puente N:N Proveedor <-> ArticuloInventario (qué provee cada quién).
+model ProveedorArticulo {
+  proveedorId Int
+  articuloId  Int
+  proveedor   Proveedor          @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+  articulo    ArticuloInventario @relation(fields: [articuloId], references: [id], onDelete: Cascade)
+
+  @@id([proveedorId, articuloId])
+}
+
+model MovimientoInventario {
+  id          Int      @id @default(autoincrement())
+  articuloId  Int
+  articulo    ArticuloInventario @relation(fields: [articuloId], references: [id], onDelete: Cascade)
+  tipo        String // ENTRADA (compra/reposición) | SALIDA (consumo/uso) | AJUSTE
+  cantidad    Float // positivo; el signo lo da el tipo
+  motivo      String?
+  stockResultante Float // stock tras el movimiento (para auditoría/BI)
+  creadoEn    DateTime @default(now())
+
+  @@index([creadoEn])
+}
+
+// ---------- Reservas importadas (Airbnb iCal / channel manager) ----------
+// Airbnb no ofrece API pública abierta; sí expone un calendario iCal (.ics)
+// por alojamiento. Importamos esos VEVENT aquí. El adaptador permite otras
+// fuentes (Booking, channel manager) reutilizando el mismo modelo.
+model Reserva {
+  id            Int       @id @default(autoincrement())
+  fuente        String    @default("AIRBNB") // AIRBNB | BOOKING | MANUAL
+  uid           String    @unique // UID del VEVENT (idempotencia al reimportar)
+  resumen       String? // "Reserved" / nombre si viene
+  huespedNombre String?
+  numHuespedes  Int?
+  nacionalidad  String? // rara vez disponible por iCal
+  checkIn       DateTime
+  checkOut      DateTime
+  numeroHabitacion Int?
+  facturaId     String? // factura emitida para esta reserva
+  eventoGoogleId String? // id del evento sincronizado en Google Calendar
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  @@index([checkIn])
+  @@index([fuente])
+}
+
+// ---------- Integraciones externas (config + tokens) ----------
+// Fila única (id=1). Guarda la URL iCal de Airbnb y los tokens OAuth de
+// Google Calendar. Los tokens son sensibles: viven solo en la BD local.
+model Integraciones {
+  id                    Int     @id @default(1)
+  airbnbIcalUrl         String? // URL .ics pública que da Airbnb
+  googleRefreshToken    String? // token de larga duración (OAuth)
+  googleCalendarId      String  @default("primary")
+  googleConectadoEmail  String?
+  ultimaSyncAirbnb      DateTime?
+  ultimaSyncGoogle      DateTime?
+}
+
+// ---------- Mantenimiento / mejoras (evidencia con PDF dúplex A4) ----------
+// Documenta reparaciones y mejoras: fotos con descripción + desglose de
+// costos. Genera un PDF A4 a doble cara (fotos al frente, descripciones en
+// espejo + tabla financiera al reverso).
+model TrabajoMantenimiento {
+  id             Int      @id @default(autoincrement())
+  titulo         String
+  descripcionGeneral String?
+  area           String?  // área física (ver src/lib/areas.ts): HAB_2, SALA, EXTERIOR…
+  // Categoría con color (ver src/lib/categoriasMantenimiento.ts).
+  categoria      String   @default("GENERAL")
+  fecha          DateTime @default(now())
+  tiempoInvertido String? // texto libre: "2 días", "8 horas"
+  responsable    String? // contratista/trabajador (albañil, plomero…)
+  responsableTel String?
+  supervisor     String?
+  supervisorTel  String?
+  numerosFactura String? // nros. de factura de materiales (texto)
+  inventarioConsumido String?
+  materialSobrante String?
+  // Tipo de trabajo: DANO (reparación) | MEJORA (mejora/capital). Módulo unificado.
+  tipo           String   @default("MEJORA")
+  // Seguimiento temporal explícito.
+  fechaInicio    DateTime?
+  fechaFin       DateTime?
+  totalDias      Int?
+  totalHoras     Float?
+  // Costos itemizados (materiales y mano de obra), guardados como JSON:
+  //   [{ concepto: string, tipo: "MATERIAL"|"MANO_OBRA", monto: number }]
+  itemsCosto     String   @default("[]")
+  costoTotal     Float    @default(0)
+  creadoEn       DateTime @default(now())
+  fotos          FotoMantenimiento[]
+
+  @@index([fecha])
+}
+
+// ---------- Solicitudes de reparación / mejora (con matriz Eisenhower) ----------
+// Un empleado reporta un problema: foto + descripción + quién lo detectó +
+// área + fecha límite. Se clasifica por urgencia/importancia (Eisenhower) y,
+// si hay Google Calendar conectado, se crea un evento con la fecha límite.
+model SolicitudReparacion {
+  id            Int      @id @default(autoincrement())
+  titulo        String
+  descripcion   String
+  area          String? // área física (src/lib/areas.ts)
+  imagen        String? // data URI de la foto del problema (opcional)
+  detectadoPor  String? // persona que vio/controló el problema
+  // Matriz Eisenhower: URGENTE_IMPORTANTE | IMPORTANTE_NO_URGENTE |
+  //                    URGENTE_NO_IMPORTANTE | NI_URGENTE_NI_IMPORTANTE
+  prioridad     String   @default("IMPORTANTE_NO_URGENTE")
+  // ABIERTA | EN_PROCESO | RESUELTA | DESCARTADA
+  estado        String   @default("ABIERTA")
+  fechaLimite   DateTime?
+  eventoGoogleId String? // evento sincronizado en Google Calendar
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@index([estado])
+  @@index([prioridad])
+}
+
+// Contactos reutilizables (trabajadores, contratistas, proveedores) para no
+// reescribir nombre+teléfono en cada reporte de mantenimiento.
+model Contacto {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  telefono  String?
+  oficio    String? // albañil, plomero, electricista, supervisor…
+  creadoEn  DateTime @default(now())
+
+  @@index([nombre])
+}
+
+model FotoMantenimiento {
+  id          Int    @id @default(autoincrement())
+  trabajoId   Int
+  trabajo     TrabajoMantenimiento @relation(fields: [trabajoId], references: [id], onDelete: Cascade)
+  orden       Int // posición en la grilla (para el espejo del reverso); sin límite de 8
+  // Fase de la foto: ANTES (estado inicial) | DESPUES (resultado). Se agrupan
+  // por fase en el PDF, con su descripción en espejo al reverso.
+  fase        String @default("ANTES")
+  imagen      String // data URI (base64) de la foto
+  descripcion String @default("")
+}
+
+// ---------- Portal de huéspedes (datos de facturación autoservicio) ----------
+// El huésped deja sus datos ANTES de facturar, desde una vista pública.
+// No es un Cliente todavía: es una bandeja que el facturador revisa y usa
+// para autocompletar la factura. No contiene precios ni datos de BI.
+model SolicitudHuesped {
+  id                 Int      @id @default(autoincrement())
+  nombre             String
+  tipoIdentificacion String // 05=Cédula | 06=Pasaporte | 04=RUC
+  identificacion     String
+  direccion          String?
+  email              String?
+  telefono           String?
+  nacionalidad       String? // CRM: el huésped la elige en el portal (lista alfabética)
+  numeroHabitacion   Int? // opcional: habitación indicada por el huésped
+  mensaje            String? // nota libre del huésped
+  // PENDIENTE (recién llegada) | USADA (ya se facturó) | DESCARTADA
+  estado             String   @default("PENDIENTE")
+  facturaId          String? // factura generada a partir de esta solicitud
+  creadoEn           DateTime @default(now())
+
+  @@index([estado])
+  @@index([creadoEn])
+}
+
+// ---------- Usuarios y control de acceso (RBAC) ----------
+// Roles (guardados como texto por compatibilidad con SQLite):
+//   ADMIN       -> acceso total, gestión de usuarios y ajustes
+//   FACTURADOR  -> generar/ver/gestionar facturas y clientes
+//   ANALISTA    -> solo lectura del dashboard BI, métricas y reportes
+//   INVENTARIO  -> gestión de gastos, incidentales e inventario
+model Usuario {
+  id           Int       @id @default(autoincrement())
+  // Login por NOMBRE DE USUARIO (único). El email se conserva como contacto.
+  usuario      String?   @unique
+  email        String    @unique
+  nombre       String
+  passwordHash String
+  rol          String    @default("FACTURADOR")
+  activo       Boolean   @default(true)
+  ultimoIngreso DateTime?
+  // Anti fuerza bruta: a los 10 intentos fallidos se bloquea 8 horas.
+  intentosFallidos Int       @default(0)
+  bloqueadoHasta   DateTime?
+  // Recuperación de contraseña por correo (token de un solo uso, expira).
+  resetToken       String?   @unique
+  resetTokenExp    DateTime?
+  creadoEn     DateTime  @default(now())
+}
+
+// ---------- Configuración editable desde la UI (/ajustes) ----------
+model Configuracion {
+  id                    Int     @id @default(1)
+  dirMatriz             String
+  dirEstablecimiento    String
+  obligadoContabilidad  String  @default("NO")
+  telefono              String?
+  emailEmisor           String?
+  leyendaRide           String? // mensaje editable que aparece en la factura/RIDE
+  // Código de referencia de la factura (editable por el admin). Si están vacíos
+  // se usa el valor del .env (EMISOR). Formato SRI: 3 dígitos cada uno.
+  establecimiento       String? // ej. "001" (punto físico)
+  puntoEmision          String? // ej. "001" (caja/terminal)
+}

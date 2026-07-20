@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+*.db
+*.db-journal
+.env
+certificados/*.p12
+uploads
+dev-server.log
+npm-debug.log*
+.DS_Store
+*.tsbuildinfo

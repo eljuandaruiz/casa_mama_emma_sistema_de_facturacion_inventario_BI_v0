@@ -1,0 +1,4 @@
+Guarda tu logo como  logo.png  en esta carpeta (public/logo.png).
+El RIDE PDF lo usará automáticamente; si no existe, imprime un espacio
+reservado "[ LOGO CASA MAMÁ EMMA ]".
+Tamaño recomendado: 450×210 px aprox., fondo blanco o transparente.

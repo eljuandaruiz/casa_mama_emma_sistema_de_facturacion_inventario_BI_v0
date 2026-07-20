@@ -1,0 +1,4 @@
+# NUNCA versionar certificados ni claves: son secretos.
+*
+!.gitignore
+!LEEME.md
