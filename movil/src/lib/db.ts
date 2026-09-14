@@ -70,6 +70,19 @@ export interface Obligacion extends ObligacionBase {
   id?: number;
 }
 
+/** Registro genérico de los módulos definidos en lib/modulos.ts (inventario, compras, huéspedes…). */
+export interface Registro {
+  id?: number;
+  modulo: string;
+  datos: Record<string, unknown>;
+  creadoEn: number;
+}
+
+export interface Ajuste {
+  clave: string;
+  valor: unknown;
+}
+
 export const CATEGORIAS_GASTO = [
   'Amenidades y aseo',
   'Lencería (sábanas, toallas)',
@@ -106,6 +119,8 @@ export const db = new Dexie('casa-mama-emma-movil') as Dexie & {
   habitaciones: EntityTable<Habitacion, 'id'>;
   reservas: EntityTable<Reserva, 'id'>;
   obligaciones: EntityTable<Obligacion, 'id'>;
+  registros: EntityTable<Registro, 'id'>;
+  ajustes: EntityTable<Ajuste, 'clave'>;
 };
 
 db.version(1).stores({
@@ -133,6 +148,17 @@ db.version(2)
     });
     if ((await tx.table('obligaciones').count()) === 0) await tx.table('obligaciones').bulkAdd(obligacionesIniciales());
   });
+
+db.version(3).stores({
+  gastos: '++id, fecha',
+  ingresos: '++id, fecha',
+  mantenimientos: '++id, fecha',
+  habitaciones: '++id, &numero',
+  reservas: '++id, checkIn, checkOut',
+  obligaciones: '++id, proximoVencimiento',
+  registros: '++id, modulo, creadoEn',
+  ajustes: 'clave',
+});
 
 db.on('populate', () => {
   db.habitaciones.bulkAdd(HABITACIONES_INICIALES);

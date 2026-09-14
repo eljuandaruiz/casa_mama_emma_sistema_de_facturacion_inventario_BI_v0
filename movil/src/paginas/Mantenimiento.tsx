@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, hoyISO, AREAS, type FotoTrabajo } from '../lib/db';
 import { fmtUsd } from '../lib/dinero';
-import { comprimirImagen } from '../lib/imagen';
+import { tomarFoto } from '../lib/foto';
 import { generarPdfMantenimiento } from '../lib/pdfMantenimiento';
 import { compartirArchivo } from '../lib/compartir';
 
@@ -16,10 +16,9 @@ export function Mantenimiento() {
 
   const trabajos = useLiveQuery(() => db.mantenimientos.orderBy('fecha').reverse().toArray()) ?? [];
 
-  const agregarFoto = async (file: File | undefined) => {
-    if (!file) return;
-    const imagen = await comprimirImagen(file, 900, 0.7);
-    setFotos((f) => [...f, { imagen, descripcion: '' }]);
+  const agregarFoto = async () => {
+    const imagen = await tomarFoto();
+    if (imagen) setFotos((f) => [...f, { imagen, descripcion: '' }]);
   };
 
   const guardar = async () => {
@@ -89,8 +88,8 @@ export function Mantenimiento() {
               <input type="number" inputMode="decimal" className="campo" value={form.costoManoObra} onChange={(e) => setForm({ ...form, costoManoObra: e.target.value })} />
             </div>
           </div>
-          <label className="etiqueta">Fotos</label>
-          <input type="file" accept="image/*" capture="environment" onChange={(e) => void agregarFoto(e.target.files?.[0])} />
+          <label className="etiqueta">Fotos (antes / después)</label>
+          <button type="button" className="btn-secundario btn-chico" onClick={agregarFoto}>Tomar foto o elegir de la galería</button>
           {fotos.length > 0 && (
             <div className="miniaturas">
               {fotos.map((f, idx) => (

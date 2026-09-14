@@ -39,6 +39,12 @@ jobs:
       - name: Agregar la plataforma Android (Capacitor)
         run: npx cap add android
 
+      - name: Permisos Android (cámara, galería, ubicación, llamadas)
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.CALL_PHONE" />\n    <application#' "$M"
+          echo "Permisos declarados: $(grep -c uses-permission "$M")"
+
       - name: Ícono y splash con el logo de Casa Mamá Emma
         continue-on-error: true
         run: |

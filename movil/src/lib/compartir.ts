@@ -11,6 +11,20 @@ async function blobADataUri(blob: Blob): Promise<string> {
   });
 }
 
+/** Comparte un texto (WhatsApp, correo, etc.). En navegador cae a copiar al portapapeles. */
+export async function compartirTexto(titulo: string, texto: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    await Share.share({ title: titulo, text: texto });
+    return;
+  }
+  if (navigator.share) {
+    await navigator.share({ title: titulo, text: texto });
+    return;
+  }
+  await navigator.clipboard.writeText(texto);
+  window.alert('Copiado al portapapeles.');
+}
+
 /**
  * Comparte un archivo (PDF o texto). Dentro del APK (Android real) usa
  * Filesystem + Share; en un navegador normal usa la Web Share API o,

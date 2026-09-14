@@ -9,11 +9,12 @@ export async function generarPdfReporte(
   gastos: Gasto[],
   ingresos: Ingreso[],
   mantenimientos: Mantenimiento[],
+  extras: { compras: number; mejoras: number } = { compras: 0, mejoras: 0 },
 ): Promise<Blob> {
   const totalIngresos = ingresos.reduce((a, i) => a + i.monto, 0);
   const totalGastos = gastos.reduce((a, g) => a + g.monto, 0);
   const totalMantenimiento = mantenimientos.reduce((a, m) => a + m.costoMateriales + m.costoManoObra, 0);
-  const resultado = totalIngresos - totalGastos - totalMantenimiento;
+  const resultado = totalIngresos - totalGastos - totalMantenimiento - extras.compras;
 
   const doc: TDocumentDefinitions = {
     pageMargins: [40, 50, 40, 40],
@@ -28,7 +29,9 @@ export async function generarPdfReporte(
             ['Ingresos', fmtUsd(totalIngresos)],
             ['Gastos', fmtUsd(totalGastos)],
             ['Mantenimiento', fmtUsd(totalMantenimiento)],
-            [{ text: 'Resultado', bold: true }, { text: fmtUsd(resultado), bold: true }],
+            ['Compras', fmtUsd(extras.compras)],
+            [{ text: 'Resultado operativo', bold: true }, { text: fmtUsd(resultado), bold: true }],
+            ['Mejoras (inversión, aparte)', fmtUsd(extras.mejoras)],
           ],
         },
         layout: 'lightHorizontalLines',

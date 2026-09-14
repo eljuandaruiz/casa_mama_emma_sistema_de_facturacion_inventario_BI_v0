@@ -4,6 +4,7 @@ import { db, hoyISO, type Reserva } from '../lib/db';
 import { fmtUsd } from '../lib/dinero';
 import { diasRestantes, nivelAlerta, textoDias } from '../lib/obligaciones';
 import { bloquesDe, etiquetaHabitaciones, ocupadasEn } from '../lib/reservas';
+import { montoRegistro } from '../lib/modulos';
 import { SaludoHora } from '../componentes/SaludoHora';
 import { FormularioReserva } from '../componentes/FormularioReserva';
 
@@ -18,6 +19,8 @@ export function Hoy({ irA }: { irA: (pestana: 'calendario' | 'mas') => void }) {
   const ingresosMes = useLiveQuery(() => db.ingresos.filter((i) => i.fecha.startsWith(mes)).toArray(), [mes]) ?? [];
   const gastosMes = useLiveQuery(() => db.gastos.filter((g) => g.fecha.startsWith(mes)).toArray(), [mes]) ?? [];
   const trabajosMes = useLiveQuery(() => db.mantenimientos.filter((m) => m.fecha.startsWith(mes)).toArray(), [mes]) ?? [];
+  const comprasMes = useLiveQuery(() => db.registros.where('modulo').equals('compras').toArray(), []) ?? [];
+  const totalCompras = comprasMes.filter((c) => String(c.datos.fecha ?? '').startsWith(mes)).reduce((a, c) => a + montoRegistro('compras', c.datos), 0);
 
   const bloques = bloquesDe(habitaciones);
   const ocupadas = ocupadasEn(reservas, hoy);
@@ -29,7 +32,7 @@ export function Hoy({ irA }: { irA: (pestana: 'calendario' | 'mas') => void }) {
     .sort((a, b) => a.dias - b.dias);
 
   const totalIngresos = ingresosMes.reduce((a, i) => a + i.monto, 0);
-  const totalEgresos = gastosMes.reduce((a, g) => a + g.monto, 0) + trabajosMes.reduce((a, m) => a + m.costoMateriales + m.costoManoObra, 0);
+  const totalEgresos = gastosMes.reduce((a, g) => a + g.monto, 0) + trabajosMes.reduce((a, m) => a + m.costoMateriales + m.costoManoObra, 0) + totalCompras;
 
   if (nueva) return <FormularioReserva inicial={nueva} onGuardado={() => setNueva(null)} onCancelar={() => setNueva(null)} />;
 

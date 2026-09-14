@@ -1,6 +1,7 @@
 import { db } from './db';
 import { feriadosDelAnio, temporadaDe } from './feriados';
 import { fmtUsd } from './dinero';
+import { montoRegistro } from './modulos';
 
 function tabla(cabecera: string[], filas: (string | number)[][]): string {
   if (!filas.length) return '_Sin datos._\n';
@@ -10,17 +11,24 @@ function tabla(cabecera: string[], filas: (string | number)[][]): string {
 
 /** Genera el Markdown para pegar en un chat de IA, leyendo solo de IndexedDB (sin servidor). */
 export async function generarExportacionIA(): Promise<string> {
-  const [gastos, ingresos, mantenimientos] = await Promise.all([
+  const [gastos, ingresos, mantenimientos, registros] = await Promise.all([
     db.gastos.toArray(),
     db.ingresos.toArray(),
     db.mantenimientos.toArray(),
+    db.registros.toArray(),
   ]);
 
-  const porMes = new Map<string, { ingresos: number; gastos: number; mantenimiento: number; noches: number }>();
+  const porMes = new Map<string, { ingresos: number; gastos: number; mantenimiento: number; compras: number; mejoras: number; noches: number }>();
   const registrar = (mes: string) => {
-    if (!porMes.has(mes)) porMes.set(mes, { ingresos: 0, gastos: 0, mantenimiento: 0, noches: 0 });
+    if (!porMes.has(mes)) porMes.set(mes, { ingresos: 0, gastos: 0, mantenimiento: 0, compras: 0, mejoras: 0, noches: 0 });
     return porMes.get(mes)!;
   };
+  for (const r of registros) {
+    const fecha = String(r.datos.fecha ?? '');
+    if (fecha.length < 7) continue;
+    if (r.modulo === 'compras') registrar(fecha.slice(0, 7)).compras += montoRegistro('compras', r.datos);
+    if (r.modulo === 'mejoras') registrar(fecha.slice(0, 7)).mejoras += montoRegistro('mejoras', r.datos);
+  }
   for (const i of ingresos) {
     const r = registrar(i.fecha.slice(0, 7));
     r.ingresos += i.monto;
@@ -53,10 +61,10 @@ export async function generarExportacionIA(): Promise<string> {
   s.push('## Mes a mes');
   s.push('');
   s.push(tabla(
-    ['Mes', 'Ingresos', 'Gastos', 'Mantenimiento', 'Resultado', 'Noches registradas'],
+    ['Mes', 'Ingresos', 'Gastos', 'Mantenimiento', 'Compras', 'Resultado operativo', 'Mejoras (inversión)', 'Noches registradas'],
     meses.map((mes) => {
       const r = porMes.get(mes)!;
-      return [mes, fmtUsd(r.ingresos), fmtUsd(r.gastos), fmtUsd(r.mantenimiento), fmtUsd(r.ingresos - r.gastos - r.mantenimiento), r.noches];
+      return [mes, fmtUsd(r.ingresos), fmtUsd(r.gastos), fmtUsd(r.mantenimiento), fmtUsd(r.compras), fmtUsd(r.ingresos - r.gastos - r.mantenimiento - r.compras), fmtUsd(r.mejoras), r.noches];
     }),
   ));
   s.push('## Por temporada (según fecha del ingreso)');

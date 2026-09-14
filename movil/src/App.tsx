@@ -5,7 +5,7 @@ import { Gastos } from './paginas/Gastos';
 import { Mantenimiento } from './paginas/Mantenimiento';
 import { Mas, type SubMas } from './paginas/Mas';
 import { IconoBilletera, IconoCalendario, IconoCasa, IconoLlave, IconoMas } from './componentes/Iconos';
-import { franjaDelDia } from './lib/tema';
+import { aplicarTema } from './lib/tema';
 
 type Pestana = 'hoy' | 'calendario' | 'dinero' | 'trabajos' | 'mas';
 
@@ -21,11 +21,10 @@ export default function App() {
   const [pestana, setPestana] = useState<Pestana>('hoy');
   const [subMas, setSubMas] = useState<SubMas>(null);
 
-  // Modo oscuro automático de noche, como el sistema de PC.
+  // Tema Auto/Claro/Oscuro (Auto = oscuro de noche, como el sistema de PC).
   useEffect(() => {
-    const aplicar = () => document.documentElement.classList.toggle('dark', franjaDelDia() === 'noche');
-    aplicar();
-    const t = setInterval(aplicar, 60_000);
+    aplicarTema();
+    const t = setInterval(() => aplicarTema(), 60_000);
     return () => clearInterval(t);
   }, []);
 

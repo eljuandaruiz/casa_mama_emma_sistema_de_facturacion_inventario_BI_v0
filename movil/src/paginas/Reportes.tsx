@@ -5,6 +5,7 @@ import { fmtUsd } from '../lib/dinero';
 import { generarPdfReporte } from '../lib/pdfReporte';
 import { generarExportacionIA } from '../lib/exportarIA';
 import { compartirArchivo } from '../lib/compartir';
+import { montoRegistro } from '../lib/modulos';
 
 const inicioDeMes = () => hoyISO().slice(0, 8) + '01';
 
@@ -17,17 +18,22 @@ export function Reportes() {
   const gastos = useLiveQuery(() => db.gastos.filter((g) => g.fecha >= desde && g.fecha <= hasta).toArray(), [desde, hasta]) ?? [];
   const mantenimientos = useLiveQuery(() => db.mantenimientos.filter((m) => m.fecha >= desde && m.fecha <= hasta).toArray(), [desde, hasta]) ?? [];
 
+  const registros = useLiveQuery(() => db.registros.toArray()) ?? [];
+  const enRango = (modulo: string) => registros.filter((r) => r.modulo === modulo && String(r.datos.fecha ?? '') >= desde && String(r.datos.fecha ?? '') <= hasta);
+  const totalCompras = enRango('compras').reduce((a, r) => a + montoRegistro('compras', r.datos), 0);
+  const totalMejoras = enRango('mejoras').reduce((a, r) => a + montoRegistro('mejoras', r.datos), 0);
+
   const totalIngresos = ingresos.reduce((a, i) => a + i.monto, 0);
   const totalGastos = gastos.reduce((a, g) => a + g.monto, 0);
   const totalMantenimiento = mantenimientos.reduce((a, m) => a + m.costoMateriales + m.costoManoObra, 0);
-  const totalEgresos = totalGastos + totalMantenimiento;
+  const totalEgresos = totalGastos + totalMantenimiento + totalCompras;
   const resultado = totalIngresos - totalEgresos;
   const maxBarra = Math.max(totalIngresos, totalEgresos, 1);
 
   const descargarPdf = async () => {
     setOcupado(true);
     try {
-      const blob = await generarPdfReporte(desde, hasta, gastos, ingresos, mantenimientos);
+      const blob = await generarPdfReporte(desde, hasta, gastos, ingresos, mantenimientos, { compras: totalCompras, mejoras: totalMejoras });
       await compartirArchivo(`reporte-${desde}-a-${hasta}.pdf`, blob, 'Reporte financiero');
     } finally {
       setOcupado(false);
@@ -77,7 +83,8 @@ export function Reportes() {
         </div>
         <p className="etiqueta">Resultado</p>
         <p style={{ fontSize: 20, fontWeight: 700, color: resultado >= 0 ? '#0f766e' : '#dc2626' }}>{fmtUsd(resultado)}</p>
-        <p className="item-detalle">Gastos: {fmtUsd(totalGastos)} · Mantenimiento: {fmtUsd(totalMantenimiento)} · {ingresos.length} ingreso(s) registrados</p>
+        <p className="item-detalle">Gastos: {fmtUsd(totalGastos)} · Mantenimiento: {fmtUsd(totalMantenimiento)} · Compras: {fmtUsd(totalCompras)} · {ingresos.length} ingreso(s)</p>
+        <p className="item-detalle">Mejoras (inversión, no entra en el resultado): {fmtUsd(totalMejoras)}</p>
       </section>
 
       <section className="tarjeta">

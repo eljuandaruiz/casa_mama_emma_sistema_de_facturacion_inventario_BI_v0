@@ -25,6 +25,27 @@ export function temaDe(franja: Franja): TemaFranja {
   }
 }
 
+export type PreferenciaTema = 'auto' | 'claro' | 'oscuro';
+
+export function preferenciaTema(): PreferenciaTema {
+  try {
+    return (localStorage.getItem('cme_tema') as PreferenciaTema) || 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+/** Aplica el tema: Auto = oscuro solo de noche (como el PC); Claro/Oscuro fijos. */
+export function aplicarTema(preferencia: PreferenciaTema = preferenciaTema()) {
+  try {
+    localStorage.setItem('cme_tema', preferencia);
+  } catch {
+    // sin almacenamiento local: se aplica igual
+  }
+  const oscuro = preferencia === 'oscuro' || (preferencia === 'auto' && franjaDelDia() === 'noche');
+  document.documentElement.classList.toggle('dark', oscuro);
+}
+
 export function fechaLargaHoy(): string {
   const t = new Date().toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long' });
   return t.charAt(0).toUpperCase() + t.slice(1);
