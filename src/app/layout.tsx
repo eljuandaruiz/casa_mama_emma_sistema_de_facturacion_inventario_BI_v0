@@ -6,12 +6,15 @@ import { temaDeRol } from '@/lib/auth/temaRol';
 import { puedeAccederRuta } from '@/lib/auth/roles';
 import { ControlTema } from '@/components/ControlTema';
 import { AlertaStock } from '@/components/AlertaStock';
+import { obtenerMarca } from '@/lib/marca';
 
-export const metadata: Metadata = {
-  title: 'Casa Mamá Emma · Facturación',
-  description:
-    'Gestión y facturación electrónica SRI para Casa Mamá Emma, Baños de Agua Santa',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const marca = await obtenerMarca();
+  return {
+    title: `${marca.nombre} · Facturación`,
+    description: `Gestión y facturación electrónica SRI para ${marca.nombre}, Baños de Agua Santa`,
+  };
+}
 
 /** viewport-fit=cover: usa toda la pantalla en iPhone 14 Pro Max / Note 10 Lite */
 export const viewport: Viewport = {
@@ -23,7 +26,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const sesion = await getSesion();
+  const [sesion, marca] = await Promise.all([getSesion(), obtenerMarca()]);
   const tema = sesion ? temaDeRol(sesion.rol) : null;
 
   return (
@@ -34,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {sesion && tema ? (
           <div className="min-h-dvh md:flex">
             {/* Sidebar en escritorio / barra inferior en móvil (según rol) */}
-            <Navegacion rol={sesion.rol} nombre={sesion.nombre} />
+            <Navegacion rol={sesion.rol} nombre={sesion.nombre} nombreNegocio={marca.nombre} logoUrl={marca.logoUrl} />
             <main className="flex-1 pb-24 md:pb-8">
               {/* Barra de color por ROL — SOLO en móvil (sin sidebar); en
                   escritorio el indicador vive a la izquierda, en el sidebar. */}
@@ -42,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 className="flex items-center justify-between px-4 py-1.5 text-xs font-semibold md:hidden"
                 style={{ backgroundColor: tema.color, color: tema.textoSobreColor }}
               >
-                <span>Casa Mamá Emma · ERP</span>
+                <span>{marca.nombre} · ERP</span>
                 <span className="rounded-full bg-white/20 px-2 py-0.5">
                   {tema.etiqueta} · {sesion.nombre}
                 </span>

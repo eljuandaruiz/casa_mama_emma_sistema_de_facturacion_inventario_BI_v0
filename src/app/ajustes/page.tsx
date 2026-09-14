@@ -1,7 +1,9 @@
 'use client';
 
-/** Ajustes: direcciones (texto libre), leyenda del RIDE y tarifas por habitación. */
+/** Ajustes: marca, direcciones (texto libre), leyenda del RIDE y tarifas por habitación. */
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { comprimirImagen } from '@/lib/imagen';
 
 interface ConfigDto {
   dirMatriz: string;
@@ -10,6 +12,8 @@ interface ConfigDto {
   leyendaRide: string | null;
   establecimiento: string | null;
   puntoEmision: string | null;
+  nombreComercial: string | null;
+  logoUrl: string | null;
 }
 
 interface HabitacionDto {
@@ -21,9 +25,11 @@ interface HabitacionDto {
 }
 
 export default function PaginaAjustes() {
+  const router = useRouter();
   const [config, setConfig] = useState<ConfigDto | null>(null);
   const [habitaciones, setHabitaciones] = useState<HabitacionDto[]>([]);
   const [mensaje, setMensaje] = useState('');
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
 
   useEffect(() => {
     void fetch('/api/configuracion').then((r) => r.json()).then(setConfig);
@@ -42,10 +48,24 @@ export default function PaginaAjustes() {
         leyendaRide: config.leyendaRide ?? '',
         establecimiento: config.establecimiento ?? '',
         puntoEmision: config.puntoEmision ?? '',
+        nombreComercial: config.nombreComercial ?? '',
+        logoUrl: config.logoUrl ?? '',
       }),
     });
     setMensaje('✅ Configuración guardada');
     setTimeout(() => setMensaje(''), 2500);
+    router.refresh();
+  };
+
+  const subirLogo = async (file: File | undefined) => {
+    if (!file || !config) return;
+    setSubiendoLogo(true);
+    try {
+      const dataUri = await comprimirImagen(file, 300, 0.85);
+      setConfig({ ...config, logoUrl: dataUri });
+    } finally {
+      setSubiendoLogo(false);
+    }
   };
 
   const guardarHabitacion = async (h: HabitacionDto) => {
@@ -70,6 +90,54 @@ export default function PaginaAjustes() {
     <div className="space-y-5 pb-8">
       <h1 className="text-2xl font-bold">Ajustes</h1>
       {mensaje && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{mensaje}</p>}
+
+      <section className="tarjeta space-y-3 p-4 md:p-5">
+        <h2 className="font-semibold">Marca</h2>
+        <p className="text-xs text-slate-400">
+          El nombre y el ícono que ven tus usuarios en el login, el menú y la pestaña del navegador.
+          No afecta la razón social ni los datos del SRI (eso se configura en <code>.env</code>).
+        </p>
+        <div className="flex items-center gap-4">
+          {config.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={config.logoUrl} alt="Ícono del negocio" className="h-16 w-16 rounded-xl object-cover" />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[10px] text-slate-400">
+              Sin ícono
+            </div>
+          )}
+          <div className="space-y-1">
+            <label className="btn-secundario inline-block cursor-pointer text-sm">
+              {subiendoLogo ? 'Subiendo…' : 'Cambiar ícono'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={subiendoLogo}
+                onChange={(e) => void subirLogo(e.target.files?.[0])}
+              />
+            </label>
+            {config.logoUrl && (
+              <button
+                type="button"
+                className="block text-xs text-coral-600 underline"
+                onClick={() => setConfig({ ...config, logoUrl: null })}
+              >
+                Quitar ícono
+              </button>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="etiqueta">Nombre del negocio</label>
+          <input
+            className="campo"
+            placeholder="Casa Mamá Emma"
+            value={config.nombreComercial ?? ''}
+            onChange={(e) => setConfig({ ...config, nombreComercial: e.target.value })}
+          />
+        </div>
+      </section>
 
       <section className="tarjeta space-y-3 p-4 md:p-5">
         <h2 className="font-semibold">Emisor (SRI)</h2>

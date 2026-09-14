@@ -12,7 +12,35 @@
     "db:migrate": "prisma migrate dev --name init",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts",
-    "test:sri": "tsx scripts/test-sri.ts"
+    "test:sri": "tsx scripts/test-sri.ts",
+    "electron:build": "node scripts/build-electron.mjs",
+    "electron:dev": "electron electron"
+  },
+  "build": {
+    "appId": "ec.casamamaemma.facturacion",
+    "productName": "Casa Mama Emma",
+    "directories": {
+      "app": "electron",
+      "output": "dist-electron"
+    },
+    "files": [
+      "main.js",
+      "servidor.js",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": ".next/standalone", "to": "app" },
+      { "from": "electron/plantilla", "to": "plantilla" }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "portable": {
+      "artifactName": "CasaMamaEmma-Portable.exe"
+    }
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -42,6 +70,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.4.47",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.14",

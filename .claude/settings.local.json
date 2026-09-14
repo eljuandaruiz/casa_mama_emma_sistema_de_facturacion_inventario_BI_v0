@@ -3,7 +3,11 @@
     "allow": [
       "Bash(curl -s -o /dev/null -w \"login: %{http_code}\\\\n\" http://localhost:3000/login)",
       "Bash(curl -s -o /dev/null -w \"home: %{http_code}\\\\n\" http://localhost:3000/)",
-      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:3000/\" -UseBasicParsing -MaximumRedirection 0 -ErrorAction SilentlyContinue\\).StatusCode)"
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:3000/login\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:3000/\" -UseBasicParsing -MaximumRedirection 0 -ErrorAction SilentlyContinue\\).StatusCode)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(npm install --save-dev electron@31 electron-builder@25 --no-audit --no-fund 2>&1)"
     ]
   }
 }

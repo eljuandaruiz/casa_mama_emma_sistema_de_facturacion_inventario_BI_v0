@@ -1,0 +1,22 @@
+CASA MAMA EMMA - VERSION LOCAL PORTABLE
+========================================
+
+Esta carpeta "datos" guarda TODO lo importante del programa. Si copias
+el .exe y esta carpeta a otra computadora o a un USB, te llevas todo.
+
+Archivos:
+  casa-mama-emma.db      Base de datos (facturas, clientes, inventario...).
+                         RESPALDALA con frecuencia: basta copiar este archivo.
+  .env                   Configuracion (RUC, ambiente SRI, clave del certificado,
+                         correo). Abrelo con el Bloc de notas para editarlo.
+  certificados\          Pon aqui tu firma electronica como "firma.p12".
+  uploads\               Comprobantes de pago subidos desde la app.
+  servidor.log           Registro tecnico; util si algo falla.
+
+Primer ingreso (cambia las contrasenas desde Usuarios):
+  ADMIN        usuario: admin        contrasena: CambiarClave123
+  RECEPCION    usuario: recepcion    contrasena: Recepcion123
+  OPERACIONES  usuario: operaciones  contrasena: Operaciones123
+
+Para apagar el programa, cierra la ventana.
+Facturar al SRI requiere internet; todo lo demas funciona sin conexion.

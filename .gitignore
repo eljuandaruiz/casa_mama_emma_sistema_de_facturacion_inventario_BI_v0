@@ -6,6 +6,10 @@ out
 .env
 certificados/*.p12
 uploads
+dist-electron
+datos
+electron/plantilla/env.plantilla
+electron/plantilla/casa-mama-emma.db
 dev-server.log
 npm-debug.log*
 .DS_Store

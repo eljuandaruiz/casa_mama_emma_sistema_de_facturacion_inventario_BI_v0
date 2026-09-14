@@ -1,0 +1,9 @@
+{
+  "name": "casa-mama-emma",
+  "productName": "Casa Mama Emma",
+  "version": "1.0.0",
+  "description": "Casa Mamá Emma - Sistema de gestión y facturación (versión local portable)",
+  "author": "Juan David Ruiz Jara",
+  "main": "main.js",
+  "private": true
+}

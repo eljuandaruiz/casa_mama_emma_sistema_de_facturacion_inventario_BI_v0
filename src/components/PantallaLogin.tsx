@@ -12,7 +12,15 @@ import { franjaDelDia, temaDe, type TemaFranja } from '@/lib/tema';
 import { Logo } from '@/components/Logo';
 import { FormularioLogin } from '@/components/FormularioLogin';
 
-export function PantallaLogin({ next }: { next?: string }) {
+export function PantallaLogin({
+  next,
+  nombreNegocio = 'Casa Mamá Emma',
+  logoUrl = null,
+}: {
+  next?: string;
+  nombreNegocio?: string;
+  logoUrl?: string | null;
+}) {
   const [tema, setTema] = useState<TemaFranja | null>(null);
 
   useEffect(() => {
@@ -31,8 +39,8 @@ export function PantallaLogin({ next }: { next?: string }) {
     >
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <Logo size={72} className="mb-2" variante={tema?.franja ?? 'manana'} />
-          <p className={`text-2xl font-bold ${oscuro ? 'text-white' : 'text-brand-800'}`}>Casa Mamá Emma</p>
+          <Logo size={72} className="mb-2" variante={tema?.franja ?? 'manana'} logoUrl={logoUrl} />
+          <p className={`text-2xl font-bold ${oscuro ? 'text-white' : 'text-brand-800'}`}>{nombreNegocio}</p>
           <p className={`text-sm ${oscuro ? 'text-slate-200' : 'text-slate-600'}`}>
             {tema ? `${tema.icono} ${tema.saludo}` : ' '} · Baños de Agua Santa
           </p>

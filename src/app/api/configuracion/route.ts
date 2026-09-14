@@ -20,6 +20,8 @@ const schema = z.object({
   // Código de referencia de la factura: 3 dígitos cada uno (o vacío = usar .env).
   establecimiento: z.string().regex(/^\d{3}$/, 'Debe ser 3 dígitos, ej. 001').optional().or(z.literal('')),
   puntoEmision: z.string().regex(/^\d{3}$/, 'Debe ser 3 dígitos, ej. 001').optional().or(z.literal('')),
+  nombreComercial: z.string().trim().max(80).optional(),
+  logoUrl: z.string().max(2_000_000).optional().or(z.literal('')),
 });
 
 /** PATCH /api/configuracion */
@@ -36,6 +38,7 @@ export async function PATCH(req: Request) {
       // '' → null para que caiga al valor del .env.
       establecimiento: parsed.data.establecimiento === '' ? null : parsed.data.establecimiento,
       puntoEmision: parsed.data.puntoEmision === '' ? null : parsed.data.puntoEmision,
+      logoUrl: parsed.data.logoUrl === '' ? null : parsed.data.logoUrl,
     },
   });
   return NextResponse.json(config);

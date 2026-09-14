@@ -8,17 +8,18 @@ import { temaDeRol } from '@/lib/auth/temaRol';
 import { Logo } from '@/components/Logo';
 
 /**
- * Logo del colibrí (formato 1×1): si existe /logo.svg en public/ se usa ese
- * archivo; si no, cae al logo SVG interno de la casita.
+ * Ícono del negocio: si el admin subió un logo en /ajustes se usa ese; si no,
+ * y existe /logo.svg en public/, se usa ese archivo; si no, el SVG interno.
  */
-function LogoColibri({ size = 44 }: { size?: number }) {
+function LogoColibri({ size = 44, logoUrl }: { size?: number; logoUrl?: string | null }) {
   const [fallback, setFallback] = useState(false);
+  if (logoUrl) return <Logo size={size} logoUrl={logoUrl} />;
   if (fallback) return <Logo size={size} />;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/logo.svg"
-      alt="Casa Mamá Emma"
+      alt="Logo del negocio"
       width={size}
       height={size}
       className="rounded-xl"
@@ -86,7 +87,17 @@ const GRUPOS: { titulo: string; rutas: Ruta[] }[] = [
   },
 ];
 
-export function Navegacion({ rol, nombre }: { rol: Rol; nombre: string }) {
+export function Navegacion({
+  rol,
+  nombre,
+  nombreNegocio = 'Casa Mamá Emma',
+  logoUrl = null,
+}: {
+  rol: Rol;
+  nombre: string;
+  nombreNegocio?: string;
+  logoUrl?: string | null;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const temaRol = temaDeRol(rol);
@@ -128,10 +139,10 @@ export function Navegacion({ rol, nombre }: { rol: Rol; nombre: string }) {
         {/* Encabezado: colibrí (+ nombre si está expandido) + botón colapsar */}
         <div className={`flex items-center gap-2 px-3 pt-5 ${colapsado ? 'flex-col' : 'justify-between pl-4 pr-2'}`}>
           <div className="flex items-center gap-2">
-            <LogoColibri size={colapsado ? 40 : 36} />
+            <LogoColibri size={colapsado ? 40 : 36} logoUrl={logoUrl} />
             {!colapsado && (
               <div className="leading-tight">
-                <p className="text-sm font-bold text-brand-700">Casa Mamá Emma</p>
+                <p className="text-sm font-bold text-brand-700">{nombreNegocio}</p>
                 <p className="text-[10px] text-slate-400">Baños de Agua Santa</p>
               </div>
             )}

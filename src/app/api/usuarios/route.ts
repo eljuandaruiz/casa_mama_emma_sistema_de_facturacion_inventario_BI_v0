@@ -14,6 +14,7 @@ export async function GET() {
       id: u.id,
       email: u.email,
       nombre: u.nombre,
+      foto: u.foto,
       rol: u.rol,
       activo: u.activo,
       ultimoIngreso: u.ultimoIngreso,
@@ -55,18 +56,22 @@ const editar = z.object({
   rol: z.enum([ROLES.ADMIN, ROLES.FACTURADOR, ROLES.OPERACIONES]).optional(),
   activo: z.boolean().optional(),
   password: z.string().min(6).optional(),
+  nombre: z.string().trim().min(2).max(80).optional(),
+  foto: z.string().max(2_000_000).optional().or(z.literal('')),
 });
 
-/** PATCH /api/usuarios — cambia rol, activa/desactiva o resetea contraseña. */
+/** PATCH /api/usuarios — cambia rol, nombre, foto, activa/desactiva o resetea contraseña. */
 export async function PATCH(req: Request) {
   const parsed = editar.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
-  const { id, rol, activo, password } = parsed.data;
+  const { id, rol, activo, password, nombre, foto } = parsed.data;
 
-  const data: { rol?: string; activo?: boolean; passwordHash?: string } = {};
+  const data: { rol?: string; activo?: boolean; passwordHash?: string; nombre?: string; foto?: string | null } = {};
   if (rol) data.rol = rol;
   if (typeof activo === 'boolean') data.activo = activo;
   if (password) data.passwordHash = await hashPassword(password);
+  if (nombre) data.nombre = nombre;
+  if (foto !== undefined) data.foto = foto === '' ? null : foto;
 
   const u = await prisma.usuario.update({ where: { id }, data });
   return NextResponse.json({ ok: true, id: u.id });

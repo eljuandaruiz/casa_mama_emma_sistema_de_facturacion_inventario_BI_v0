@@ -605,6 +605,7 @@ model Usuario {
   usuario      String?   @unique
   email        String    @unique
   nombre       String
+  foto         String? // data URI de la foto de perfil (opcional)
   passwordHash String
   rol          String    @default("FACTURADOR")
   activo       Boolean   @default(true)
@@ -631,4 +632,8 @@ model Configuracion {
   // se usa el valor del .env (EMISOR). Formato SRI: 3 dígitos cada uno.
   establecimiento       String? // ej. "001" (punto físico)
   puntoEmision          String? // ej. "001" (caja/terminal)
+  // Marca: nombre e ícono visibles en la app (no afectan al SRI). Si están
+  // vacíos se usa el valor del .env (EMISOR.nombreComercial) o el logo interno.
+  nombreComercial       String? // nombre mostrado en login, barra y pestaña
+  logoUrl               String? // data URI de la imagen subida como ícono
 }

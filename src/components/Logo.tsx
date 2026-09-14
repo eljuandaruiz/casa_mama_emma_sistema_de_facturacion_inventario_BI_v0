@@ -17,11 +17,27 @@ export function Logo({
   size = 40,
   className = '',
   variante = 'manana',
+  logoUrl = null,
 }: {
   size?: number;
   className?: string;
   variante?: Franja;
+  /** Ícono subido por el admin en /ajustes; si está presente reemplaza el dibujo. */
+  logoUrl?: string | null;
 }) {
+  if (logoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={logoUrl}
+        alt="Logo del negocio"
+        width={size}
+        height={size}
+        className={`rounded-xl object-cover ${className}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   const p = PALETAS[variante] ?? PALETAS.manana;
   return (
     <svg

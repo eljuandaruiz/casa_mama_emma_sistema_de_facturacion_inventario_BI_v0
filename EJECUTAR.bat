@@ -81,3 +81,4 @@ echo.
 echo   El servidor se detuvo. Si fue por error, vuelve a dar doble clic
 echo   en EJECUTAR.bat. Si el problema sigue, usa REPARAR.bat.
 pause
+
