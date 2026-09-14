@@ -1,0 +1,37 @@
+CASA MAMA EMMA - APP MOVIL LOCAL (sin servidor)
+=================================================
+
+Que es esto:
+  Una app aparte, chica, que se instala en tu telefono Android y guarda
+  TODO dentro del propio telefono (no depende de tu PC ni de internet).
+  Sirve para: anotar gastos e ingresos, generar PDF de trabajos de
+  mantenimiento, ver reportes con graficos simples, "simular" el precio
+  de una factura (calculadora, sin emitirla de verdad al SRI), y generar
+  un archivo de texto para pegarlo en un chat de IA (ChatGPT, Claude,
+  Gemini) y que te de un analisis del negocio.
+
+  La facturacion ELECTRONICA real (la que se envia al SRI) sigue en el
+  sistema de la PC, porque esa si necesita el certificado digital e
+  internet.
+
+Como conseguir el archivo .apk para instalar:
+  1. En GitHub, entra a la pestana "Actions" del repositorio.
+  2. Busca el run mas reciente de "Construir APK movil" (se genera solo
+     cada vez que se sube un cambio en la carpeta movil/, o lo puedes
+     lanzar manualmente con el boton "Run workflow").
+  3. Espera a que termine (unos 3-5 minutos). Abajo, en "Artifacts",
+     descarga "CasaMamaEmma-Movil-apk" (es un .zip).
+  4. Descomprimelo: adentro esta "app-debug.apk". Sube ese archivo a tu
+     carpeta de Google Drive.
+  5. En el telefono, abre Drive, descarga el .apk y tocalo para instalar.
+     Android va a advertir "origen desconocido": permite la instalacion
+     (es normal, porque no viene de Play Store).
+
+Respaldo de tus datos:
+  Los datos viven SOLO en ese telefono. Si cambias de telefono o
+  reinstalas la app, se pierden. Usa seguido el boton "Exportar para IA"
+  o el PDF de reportes para tener una copia fuera del telefono.
+
+Compilar localmente (opcional, para quien sepa):
+  cd movil && npm install && npm run dev    (para probar en el navegador)
+  npm run build                              (genera dist/, la web compilada)

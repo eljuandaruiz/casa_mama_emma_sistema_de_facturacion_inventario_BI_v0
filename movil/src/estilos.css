@@ -1,0 +1,142 @@
+:root {
+  --brand: #0f766e;
+  --brand-dark: #0d5c56;
+  --bg: #fafaf9;
+  --tarjeta: #ffffff;
+  --borde: #e7e5e4;
+  --texto: #292524;
+  --texto-suave: #78716c;
+  --coral: #dc2626;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #raiz {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--texto);
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.encabezado {
+  padding: 16px 16px 10px;
+  background: var(--brand);
+  color: white;
+}
+.encabezado h1 { margin: 0; font-size: 18px; }
+.encabezado p { margin: 2px 0 0; font-size: 12px; opacity: 0.85; }
+
+.contenido {
+  flex: 1;
+  padding: 14px 14px 90px;
+  overflow-y: auto;
+}
+
+.tarjeta {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.etiqueta {
+  display: block;
+  font-size: 12px;
+  color: var(--texto-suave);
+  margin-bottom: 4px;
+}
+
+.campo {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  font-size: 15px;
+  background: white;
+  color: var(--texto);
+}
+
+.fila { display: flex; gap: 10px; flex-wrap: wrap; }
+.fila > * { flex: 1; min-width: 120px; }
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primario { background: var(--brand); color: white; }
+.btn-secundario { background: #f1f5f4; color: var(--brand-dark); }
+.btn-peligro { background: #fee2e2; color: var(--coral); }
+.btn:disabled { opacity: 0.5; }
+.btn-bloque { width: 100%; }
+
+.lista { list-style: none; margin: 0; padding: 0; }
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--borde);
+}
+.item:last-child { border-bottom: none; }
+.item-titulo { font-weight: 600; font-size: 14px; }
+.item-detalle { font-size: 12px; color: var(--texto-suave); }
+.monto-gasto { color: var(--coral); font-weight: 600; }
+.monto-ingreso { color: var(--brand); font-weight: 600; }
+
+.barra {
+  height: 10px;
+  border-radius: 6px;
+  background: var(--brand);
+}
+
+.nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  background: white;
+  border-top: 1px solid var(--borde);
+  padding-bottom: env(safe-area-inset-bottom);
+  max-width: 560px;
+  margin: 0 auto;
+}
+.nav button {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 10px 4px 8px;
+  font-size: 11px;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+.nav button.activo { color: var(--brand); font-weight: 700; }
+
+.miniaturas { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.miniatura { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; }
+.miniatura img { width: 100%; height: 100%; object-fit: cover; }
+.miniatura button {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(0,0,0,0.6); color: white; border: none;
+  border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 1;
+}
+
+textarea.campo { resize: vertical; min-height: 70px; }

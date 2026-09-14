@@ -1,0 +1,55 @@
+name: Construir APK móvil
+
+# Genera el instalador Android (.apk) de la app móvil local (carpeta movil/).
+# No necesita servidor ni Android SDK en tu computadora: todo se compila aquí,
+# en GitHub. Al terminar, el .apk queda descargable en la pestaña "Actions"
+# de este repositorio, dentro del run correspondiente, en "Artifacts".
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'movil/**'
+      - '.github/workflows/build-apk-movil.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movil
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar la app web (vite build)
+        run: npm run build
+
+      - name: Agregar la plataforma Android (Capacitor)
+        run: npx cap add android
+
+      - name: Sincronizar assets web -> Android
+        run: npx cap sync android
+
+      - name: Compilar el .apk (firma de depuración, instalable directo)
+        working-directory: movil/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CasaMamaEmma-Movil-apk
+          path: movil/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
