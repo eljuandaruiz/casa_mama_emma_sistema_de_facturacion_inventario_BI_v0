@@ -39,6 +39,12 @@ jobs:
       - name: Agregar la plataforma Android (Capacitor)
         run: npx cap add android
 
+      - name: Ícono y splash con el logo de Casa Mamá Emma
+        continue-on-error: true
+        run: |
+          node scripts/generar-iconos.mjs
+          npx capacitor-assets generate --android --iconBackgroundColor '#0f766e' --iconBackgroundColorDark '#134e4a' --splashBackgroundColor '#0f766e' --splashBackgroundColorDark '#134e4a'
+
       - name: Sincronizar assets web -> Android
         run: npx cap sync android
 

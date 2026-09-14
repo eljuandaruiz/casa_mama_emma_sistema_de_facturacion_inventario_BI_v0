@@ -24,12 +24,6 @@ export function Simulador() {
     });
   };
 
-  const guardarPrecioHabitacion = async (id: number, campo: 'precioHabitacion' | 'precioPersona', valor: string) => {
-    const n = Number(valor);
-    if (Number.isNaN(n)) return;
-    await db.habitaciones.update(id, { [campo]: n });
-  };
-
   const calcular = () => {
     setError('');
     setResultado(null);
@@ -134,20 +128,7 @@ export function Simulador() {
         </section>
       )}
 
-      <section className="tarjeta">
-        <p className="etiqueta">Tarifas de habitaciones (editable)</p>
-        <ul className="lista">
-          {habitaciones.map((h) => (
-            <li key={h.id} className="item">
-              <span className="item-titulo">Hab. {h.numero}</span>
-              <div className="fila" style={{ maxWidth: 220 }}>
-                <input type="number" className="campo" defaultValue={h.precioHabitacion} onBlur={(e) => guardarPrecioHabitacion(h.id!, 'precioHabitacion', e.target.value)} title="Precio por habitación" />
-                <input type="number" className="campo" defaultValue={h.precioPersona} onBlur={(e) => guardarPrecioHabitacion(h.id!, 'precioPersona', e.target.value)} title="Precio por persona" />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <p className="texto-tenue">Las tarifas se editan en Más → Habitaciones y tarifas.</p>
     </div>
   );
 }

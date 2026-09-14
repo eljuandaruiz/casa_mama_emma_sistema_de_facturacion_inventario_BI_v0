@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/core';
 // propio APK (webDir), por eso no necesita ningún servidor ni internet.
 const config: CapacitorConfig = {
   appId: 'ec.casamamaemma.movil',
-  appName: 'Casa Mamá Emma · Móvil',
+  appName: 'Casa Mamá Emma',
   webDir: 'dist',
 };
 
