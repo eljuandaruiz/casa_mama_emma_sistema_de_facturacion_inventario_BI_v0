@@ -53,8 +53,8 @@ export function Gastos() {
     <div>
       {!abierto && (
         <div className="fila" style={{ marginBottom: 12 }}>
-          <button className="btn btn-peligro btn-bloque" onClick={() => { setTipo('gasto'); setAbierto(true); }}>+ Gasto</button>
-          <button className="btn btn-primario btn-bloque" onClick={() => { setTipo('ingreso'); setAbierto(true); }}>+ Ingreso</button>
+          <button className="btn-peligro btn-bloque" onClick={() => { setTipo('gasto'); setAbierto(true); }}>+ Gasto</button>
+          <button className="btn-primario btn-bloque" onClick={() => { setTipo('ingreso'); setAbierto(true); }}>+ Ingreso</button>
         </div>
       )}
 
@@ -78,8 +78,8 @@ export function Gastos() {
           <label className="etiqueta">Descripción (opcional)</label>
           <input className="campo" value={gasto.descripcion} onChange={(e) => setGasto({ ...gasto, descripcion: e.target.value })} />
           <div className="fila" style={{ marginTop: 10 }}>
-            <button className="btn btn-secundario btn-bloque" onClick={() => setAbierto(false)}>Cancelar</button>
-            <button className="btn btn-primario btn-bloque" onClick={guardarGasto}>Guardar</button>
+            <button className="btn-secundario btn-bloque" onClick={() => setAbierto(false)}>Cancelar</button>
+            <button className="btn-primario btn-bloque" onClick={guardarGasto}>Guardar</button>
           </div>
         </section>
       )}
@@ -118,8 +118,8 @@ export function Gastos() {
           <label className="etiqueta">Notas (opcional)</label>
           <input className="campo" value={ingreso.notas} onChange={(e) => setIngreso({ ...ingreso, notas: e.target.value })} />
           <div className="fila" style={{ marginTop: 10 }}>
-            <button className="btn btn-secundario btn-bloque" onClick={() => setAbierto(false)}>Cancelar</button>
-            <button className="btn btn-primario btn-bloque" onClick={guardarIngreso}>Guardar</button>
+            <button className="btn-secundario btn-bloque" onClick={() => setAbierto(false)}>Cancelar</button>
+            <button className="btn-primario btn-bloque" onClick={guardarIngreso}>Guardar</button>
           </div>
         </section>
       )}
@@ -136,7 +136,7 @@ export function Gastos() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span className={m.esIngreso ? 'monto-ingreso' : 'monto-gasto'}>{m.esIngreso ? '+' : '-'}{fmtUsd(m.monto)}</span>
-                <button className="btn btn-secundario" style={{ padding: '4px 8px' }} onClick={() => borrar(m.tabla, m.id)}>✕</button>
+                <button className="btn-secundario" style={{ padding: '4px 8px' }} onClick={() => borrar(m.tabla, m.id)}>✕</button>
               </div>
             </li>
           ))}

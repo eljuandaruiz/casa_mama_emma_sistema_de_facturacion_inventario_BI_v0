@@ -12,7 +12,6 @@
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.1.0",
-    "@capacitor/camera": "^7.0.3",
     "@capacitor/core": "^7.4.4",
     "@capacitor/filesystem": "^7.1.5",
     "@capacitor/geolocation": "^7.1.5",
@@ -26,11 +25,11 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.4.4",
-    "sharp": "^0.33.5",
     "@types/pdfmake": "^0.2.9",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "sharp": "^0.33.5",
     "typescript": "^5.6.3",
     "vite": "^6.0.7"
   }

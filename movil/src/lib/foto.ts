@@ -1,34 +1,40 @@
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Capacitor } from '@capacitor/core';
 import { comprimirImagen } from './imagen';
 
-/** Toma una foto con la cámara o la elige de la galería (en Android pide permiso la primera vez). */
-export async function tomarFoto(): Promise<string | null> {
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const foto = await Camera.getPhoto({
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt,
-        quality: 60,
-        width: 1000,
-        promptLabelHeader: 'Foto',
-        promptLabelPhoto: 'Elegir de la galería',
-        promptLabelPicture: 'Tomar foto',
-        promptLabelCancel: 'Cancelar',
-      });
-      return foto.dataUrl ?? null;
-    } catch {
-      return null;
-    }
-  }
+/**
+ * Elige una foto (cámara o galería) con el selector nativo del navegador/WebView,
+ * igual que el sistema web de la PC: es lo más confiable dentro del APK y no
+ * depende de permisos extra ni reinicia la pantalla.
+ * Devuelve un data URI comprimido, o null si se cancela.
+ */
+export function tomarFoto(): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    let resuelto = false;
+    const terminar = (valor: string | null) => {
+      if (resuelto) return;
+      resuelto = true;
+      input.remove();
+      resolve(valor);
+    };
+
     input.onchange = async () => {
       const file = input.files?.[0];
-      resolve(file ? await comprimirImagen(file, 1000, 0.7) : null);
+      if (!file) return terminar(null);
+      try {
+        terminar(await comprimirImagen(file, 800, 0.6));
+      } catch {
+        terminar(null);
+      }
     };
+    // Si el usuario cancela, algunos WebView no disparan ningún evento: se
+    // libera el input al volver el foco a la ventana.
+    window.addEventListener('focus', () => setTimeout(() => { if (!input.files?.length) terminar(null); }, 1500), { once: true });
+
     input.click();
   });
 }

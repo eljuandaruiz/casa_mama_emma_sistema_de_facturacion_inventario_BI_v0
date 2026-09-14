@@ -106,7 +106,7 @@ export function Simulador() {
         )}
 
         {error && <p style={{ color: '#dc2626', fontSize: 13, marginTop: 8 }}>{error}</p>}
-        <button className="btn btn-primario btn-bloque" style={{ marginTop: 10 }} onClick={calcular}>Calcular</button>
+        <button className="btn-primario btn-bloque" style={{ marginTop: 10 }} onClick={calcular}>Calcular</button>
       </section>
 
       {resultado && (

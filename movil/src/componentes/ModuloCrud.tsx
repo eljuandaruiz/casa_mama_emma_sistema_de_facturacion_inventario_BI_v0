@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, hoyISO, type Registro } from '../lib/db';
 import type { Campo, Datos, DefinicionModulo } from '../lib/modulos';
 import { fmtUsd } from '../lib/dinero';
 import { tomarFoto } from '../lib/foto';
 import { telefonoInternacional } from '../lib/ubicacion';
+import { borrarBorrador, guardarBorrador, leerBorrador } from '../lib/navegacion';
+
+interface Borrador {
+  id: number | null;
+  datos: Datos;
+}
 
 function datosIniciales(campos: Campo[]): Datos {
   const d: Datos = {};
@@ -20,15 +26,31 @@ function datosIniciales(campos: Campo[]): Datos {
 /** Módulo genérico: lista con búsqueda, formulario según definición, fotos, llamadas y WhatsApp. */
 export function ModuloCrud({ def }: { def: DefinicionModulo }) {
   const registros = useLiveQuery(() => db.registros.where('modulo').equals(def.id).toArray(), [def.id]) ?? [];
-  const [editando, setEditando] = useState<Registro | null>(null);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
   const [nuevo, setNuevo] = useState(false);
   const [datos, setDatos] = useState<Datos>({});
   const [busqueda, setBusqueda] = useState('');
   const [error, setError] = useState('');
 
-  const abrirNuevo = () => { setDatos(datosIniciales(def.campos)); setNuevo(true); setEditando(null); setError(''); };
-  const abrirEditar = (r: Registro) => { setDatos({ ...datosIniciales(def.campos), ...r.datos }); setEditando(r); setNuevo(true); setError(''); };
-  const cerrar = () => { setNuevo(false); setEditando(null); };
+  const clave = `modulo_${def.id}`;
+
+  // Si Android reinició la pantalla con el formulario abierto, lo recupera.
+  useEffect(() => {
+    const b = leerBorrador<Borrador>(clave);
+    if (b?.datos) {
+      setDatos(b.datos);
+      setEditandoId(b.id);
+      setNuevo(true);
+    }
+  }, [clave]);
+
+  useEffect(() => {
+    if (nuevo) guardarBorrador(clave, { id: editandoId, datos } satisfies Borrador);
+  }, [nuevo, datos, editandoId, clave]);
+
+  const abrirNuevo = () => { setDatos(datosIniciales(def.campos)); setEditandoId(null); setNuevo(true); setError(''); };
+  const abrirEditar = (r: Registro) => { setDatos({ ...datosIniciales(def.campos), ...r.datos }); setEditandoId(r.id ?? null); setNuevo(true); setError(''); };
+  const cerrar = () => { setNuevo(false); setEditandoId(null); borrarBorrador(clave); };
 
   const guardar = async () => {
     const limpio: Datos = {};
@@ -37,9 +59,9 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
       if (c.tipo === 'numero' || c.tipo === 'dinero') limpio[c.clave] = v === '' || v === undefined ? 0 : Number(v) || 0;
       else if (c.tipo === 'si_no') limpio[c.clave] = Boolean(v);
       else limpio[c.clave] = typeof v === 'string' ? v.trim() : v ?? '';
-      if (c.requerido && (limpio[c.clave] === '' || limpio[c.clave] === 0 && c.tipo === 'dinero')) return setError(`Falta: ${c.etiqueta}.`);
+      if (c.requerido && !limpio[c.clave]) return setError(`Falta: ${c.etiqueta}.`);
     }
-    if (editando?.id) await db.registros.update(editando.id, { datos: limpio });
+    if (editandoId) await db.registros.update(editandoId, { datos: limpio });
     else await db.registros.add({ modulo: def.id, datos: limpio, creadoEn: Date.now() });
     cerrar();
   };
@@ -48,6 +70,13 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
     if (!window.confirm(`¿Borrar este ${def.singular}?`)) return;
     await db.registros.delete(id);
     cerrar();
+  };
+
+  const ponerFoto = async (campo: string) => {
+    setError('');
+    const img = await tomarFoto();
+    if (img) setDatos((d) => ({ ...d, [campo]: img }));
+    else setError('No se agregó ninguna foto. Si no se abrió la galería, revisa los permisos de la app en Ajustes de Android.');
   };
 
   const filtrados = registros
@@ -59,7 +88,7 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
   if (nuevo) {
     return (
       <section className="tarjeta">
-        <h2>{editando ? `Editar ${def.singular}` : `Nuevo ${def.singular}`}</h2>
+        <h2>{editandoId ? `Editar ${def.singular}` : `Nuevo ${def.singular}`}</h2>
         {def.campos.map((c) => (
           <div key={c.clave}>
             {c.tipo !== 'si_no' && <label className="etiqueta">{c.etiqueta}{c.requerido ? ' *' : ''}</label>}
@@ -89,8 +118,8 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
                     </div>
                   </div>
                 ) : null}
-                <button type="button" className="btn-secundario btn-chico" style={{ marginTop: 6 }} onClick={async () => { const img = await tomarFoto(); if (img) setDatos({ ...datos, [c.clave]: img }); }}>
-                  {datos[c.clave] ? 'Cambiar foto' : 'Tomar foto o elegir de la galería'}
+                <button type="button" className="btn-secundario btn-chico" style={{ marginTop: 6 }} onClick={() => ponerFoto(c.clave)}>
+                  {datos[c.clave] ? 'Cambiar foto' : 'Agregar foto (cámara o galería)'}
                 </button>
               </div>
             )}
@@ -101,7 +130,7 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
           <button className="btn-secundario btn-bloque" onClick={cerrar}>Cancelar</button>
           <button className="btn-primario btn-bloque" onClick={guardar}>Guardar</button>
         </div>
-        {editando?.id && <button className="btn-peligro btn-bloque" style={{ marginTop: 10 }} onClick={() => borrar(editando.id!)}>Borrar {def.singular}</button>}
+        {editandoId && <button className="btn-peligro btn-bloque" style={{ marginTop: 10 }} onClick={() => borrar(editandoId)}>Borrar {def.singular}</button>}
       </section>
     );
   }
@@ -119,7 +148,7 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
         <ul className="lista">
           {filtrados.map(({ r, s }) => {
             const tel = campoTelefono ? String(r.datos[campoTelefono] ?? '') : '';
-            const foto = def.campos.find((c) => c.tipo === 'foto') ? String(r.datos.foto ?? '') : '';
+            const foto = String(r.datos.foto ?? '');
             return (
               <li key={r.id} className="item" style={{ alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1, minWidth: 0 }} onClick={() => abrirEditar(r)}>
@@ -127,15 +156,17 @@ export function ModuloCrud({ def }: { def: DefinicionModulo }) {
                   <div style={{ minWidth: 0 }}>
                     <p className="item-titulo">{s.titulo} {s.alerta && <span className="pill pill-coral">{s.alerta}</span>}</p>
                     <p className="item-detalle">{s.detalle}</p>
-                    {tel && (
-                      <div className="chips" style={{ marginTop: 6 }}>
-                        <a className="chip" href={`tel:${tel}`}>Llamar</a>
-                        <a className="chip" href={`https://wa.me/${telefonoInternacional(tel)}`} target="_blank" rel="noreferrer">WhatsApp</a>
-                      </div>
-                    )}
                   </div>
                 </div>
-                {s.monto !== undefined && <span style={{ fontWeight: 700, flexShrink: 0 }}>{fmtUsd(s.monto)}</span>}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                  {s.monto !== undefined && <span style={{ fontWeight: 700 }}>{fmtUsd(s.monto)}</span>}
+                  {tel && (
+                    <div className="chips">
+                      <a className="chip" href={`tel:${tel}`}>Llamar</a>
+                      <a className="chip" href={`https://wa.me/${telefonoInternacional(tel)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                    </div>
+                  )}
+                </div>
               </li>
             );
           })}

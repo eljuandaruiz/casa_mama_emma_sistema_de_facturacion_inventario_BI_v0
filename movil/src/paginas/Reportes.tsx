@@ -90,8 +90,8 @@ export function Reportes() {
       <section className="tarjeta">
         <p className="etiqueta">Compartir</p>
         <div className="fila">
-          <button className="btn btn-secundario btn-bloque" disabled={ocupado} onClick={descargarPdf}>PDF del reporte</button>
-          <button className="btn btn-primario btn-bloque" disabled={ocupado} onClick={exportarIA}>Exportar para IA</button>
+          <button className="btn-secundario btn-bloque" disabled={ocupado} onClick={descargarPdf}>PDF del reporte</button>
+          <button className="btn-primario btn-bloque" disabled={ocupado} onClick={exportarIA}>Exportar para IA</button>
         </div>
         <p className="item-detalle" style={{ marginTop: 8 }}>
           "Exportar para IA" genera un archivo de texto que puedes pegar en ChatGPT, Claude o Gemini para que te dé un análisis del negocio.

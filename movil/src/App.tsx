@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
+import { App as CapApp } from '@capacitor/app';
 import { Hoy } from './paginas/Hoy';
 import { Calendario } from './paginas/Calendario';
 import { Gastos } from './paginas/Gastos';
 import { Mantenimiento } from './paginas/Mantenimiento';
-import { Mas, type SubMas } from './paginas/Mas';
+import { Mas } from './paginas/Mas';
 import { IconoBilletera, IconoCalendario, IconoCasa, IconoLlave, IconoMas } from './componentes/Iconos';
 import { aplicarTema } from './lib/tema';
-
-type Pestana = 'hoy' | 'calendario' | 'dinero' | 'trabajos' | 'mas';
+import { guardarNavegacion, leerNavegacion, type Pestana } from './lib/navegacion';
 
 const PESTANAS: { id: Pestana; etiqueta: string; Icono: typeof IconoCasa }[] = [
   { id: 'hoy', etiqueta: 'Hoy', Icono: IconoCasa },
@@ -18,8 +18,9 @@ const PESTANAS: { id: Pestana; etiqueta: string; Icono: typeof IconoCasa }[] = [
 ];
 
 export default function App() {
-  const [pestana, setPestana] = useState<Pestana>('hoy');
-  const [subMas, setSubMas] = useState<SubMas>(null);
+  const inicial = leerNavegacion();
+  const [pestana, setPestana] = useState<Pestana>(inicial.pestana);
+  const [subMas, setSubMas] = useState<string | null>(inicial.sub);
 
   // Tema Auto/Claro/Oscuro (Auto = oscuro de noche, como el sistema de PC).
   useEffect(() => {
@@ -27,6 +28,24 @@ export default function App() {
     const t = setInterval(() => aplicarTema(), 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // Recuerda dónde estabas: Android reinicia la pantalla al elegir fotos o
+  // cuando le falta memoria, y antes eso te devolvía siempre al inicio.
+  useEffect(() => {
+    guardarNavegacion({ pestana, sub: subMas });
+  }, [pestana, subMas]);
+
+  // Botón ATRÁS de Android: retrocede dentro de la app en vez de cerrarla.
+  useEffect(() => {
+    const listener = CapApp.addListener('backButton', () => {
+      if (subMas) setSubMas(null);
+      else if (pestana !== 'hoy') setPestana('hoy');
+      else void CapApp.exitApp();
+    });
+    return () => {
+      void listener.then((l) => l.remove());
+    };
+  }, [pestana, subMas]);
 
   const irA = (p: 'calendario' | 'mas') => {
     if (p === 'mas') setSubMas('obligaciones');

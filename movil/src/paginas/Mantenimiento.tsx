@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, hoyISO, AREAS, type FotoTrabajo } from '../lib/db';
 import { fmtUsd } from '../lib/dinero';
 import { tomarFoto } from '../lib/foto';
 import { generarPdfMantenimiento } from '../lib/pdfMantenimiento';
 import { compartirArchivo } from '../lib/compartir';
+import { borrarBorrador, guardarBorrador, leerBorrador } from '../lib/navegacion';
 
 const VACIO = { titulo: '', area: AREAS[0], descripcion: '', fecha: hoyISO(), costoMateriales: '', costoManoObra: '' };
 
@@ -13,12 +14,29 @@ export function Mantenimiento() {
   const [form, setForm] = useState(VACIO);
   const [fotos, setFotos] = useState<FotoTrabajo[]>([]);
   const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState('');
 
   const trabajos = useLiveQuery(() => db.mantenimientos.orderBy('fecha').reverse().toArray()) ?? [];
 
+  // Recupera el formulario si Android reinició la pantalla (p. ej. al tomar una foto).
+  useEffect(() => {
+    const b = leerBorrador<{ form: typeof VACIO; fotos: FotoTrabajo[] }>('mantenimiento');
+    if (b?.form) {
+      setForm(b.form);
+      setFotos(b.fotos ?? []);
+      setAbierto(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (abierto) guardarBorrador('mantenimiento', { form, fotos });
+  }, [abierto, form, fotos]);
+
   const agregarFoto = async () => {
+    setAviso('');
     const imagen = await tomarFoto();
     if (imagen) setFotos((f) => [...f, { imagen, descripcion: '' }]);
+    else setAviso('No se agregó ninguna foto. Si no se abrió la galería, revisa los permisos de la app en Ajustes de Android.');
   };
 
   const guardar = async () => {
@@ -33,9 +51,15 @@ export function Mantenimiento() {
       fotos,
       creadoEn: Date.now(),
     });
+    cerrar();
+  };
+
+  const cerrar = () => {
     setForm(VACIO);
     setFotos([]);
     setAbierto(false);
+    setAviso('');
+    borrarBorrador('mantenimiento');
   };
 
   const borrar = async (id: number) => {
@@ -57,7 +81,7 @@ export function Mantenimiento() {
 
   return (
     <div>
-      {!abierto && <button className="btn btn-primario btn-bloque" style={{ marginBottom: 12 }} onClick={() => setAbierto(true)}>+ Nuevo trabajo</button>}
+      {!abierto && <button className="btn-primario btn-bloque" style={{ marginBottom: 12 }} onClick={() => setAbierto(true)}>+ Nuevo trabajo</button>}
 
       {abierto && (
         <section className="tarjeta">
@@ -89,7 +113,8 @@ export function Mantenimiento() {
             </div>
           </div>
           <label className="etiqueta">Fotos (antes / después)</label>
-          <button type="button" className="btn-secundario btn-chico" onClick={agregarFoto}>Tomar foto o elegir de la galería</button>
+          <button type="button" className="btn-secundario btn-chico" onClick={agregarFoto}>Agregar foto (cámara o galería)</button>
+          {aviso && <p style={{ color: 'var(--coral-600)', fontSize: 13, marginTop: 8 }}>{aviso}</p>}
           {fotos.length > 0 && (
             <div className="miniaturas">
               {fotos.map((f, idx) => (
@@ -101,8 +126,8 @@ export function Mantenimiento() {
             </div>
           )}
           <div className="fila" style={{ marginTop: 10 }}>
-            <button className="btn btn-secundario btn-bloque" onClick={() => { setAbierto(false); setForm(VACIO); setFotos([]); }}>Cancelar</button>
-            <button className="btn btn-primario btn-bloque" onClick={guardar}>Guardar</button>
+            <button className="btn-secundario btn-bloque" onClick={cerrar}>Cancelar</button>
+            <button className="btn-primario btn-bloque" onClick={guardar}>Guardar</button>
           </div>
         </section>
       )}
@@ -118,8 +143,8 @@ export function Mantenimiento() {
                 <p className="item-detalle">{t.area} · {t.fecha} · {fmtUsd(t.costoMateriales + t.costoManoObra)}</p>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn btn-secundario" style={{ padding: '4px 8px', fontSize: 12 }} disabled={ocupado} onClick={() => pdfYCompartir(t.id!)}>PDF</button>
-                <button className="btn btn-secundario" style={{ padding: '4px 8px' }} onClick={() => borrar(t.id!)}>✕</button>
+                <button className="btn-secundario" style={{ padding: '4px 8px', fontSize: 12 }} disabled={ocupado} onClick={() => pdfYCompartir(t.id!)}>PDF</button>
+                <button className="btn-secundario" style={{ padding: '4px 8px' }} onClick={() => borrar(t.id!)}>✕</button>
               </div>
             </li>
           ))}
